@@ -328,6 +328,35 @@
         const origCheck = window.checkEnvelopeStatus;
         if (!origCheck) return;
 
+        // 覆盖回信文本生成：优先从"回信"分组抽取
+        window.generateEnvelopeReplyText = function () {
+            let pool = [];
+
+            // 尝试从 customReplyGroups 里找名为"回信"的分组
+            if (window.customReplyGroups && window.customReplyGroups.length > 0) {
+                const letterGroup = window.customReplyGroups.find(g =>
+                    g.name === '回信' && !g.disabled && g.items && g.items.length > 0
+                );
+                if (letterGroup) pool = [...letterGroup.items];
+            }
+
+            // 如果没有"回信"分组或为空，fallback 到全部 customReplies
+            if (pool.length === 0 && typeof customReplies !== 'undefined') {
+                pool = [...customReplies];
+            }
+
+            if (pool.length === 0) return '…';
+
+            const sentenceCount = Math.floor(Math.random() * 3) + 1; // 1-3 句
+            let reply = '';
+            for (let i = 0; i < sentenceCount; i++) {
+                const sentence = pool[Math.floor(Math.random() * pool.length)];
+                const punct = Math.random() < 0.2 ? '！' : (Math.random() < 0.2 ? '...' : '。');
+                reply += sentence + punct;
+            }
+            return reply;
+        };
+
         window.checkEnvelopeStatus = async function () {
             if (typeof loadEnvelopeData === 'function') await loadEnvelopeData();
             if (typeof envelopeData === 'undefined') return;
@@ -596,15 +625,9 @@
                 <div class="cx-card-body">
                     ${card.img ? `
                     <div style="text-align:center; margin-bottom:14px;">
-                        <div class="tarot-container-3d tarot-responsive" style="cursor:pointer; display:inline-block; width:120px;" onclick="this.classList.toggle('flipped');">
-                            <div class="tarot-card-inner">
-                                <div class="tarot-face tarot-front"><div class="tarot-pattern" style="font-size:18px;"><i class="fas fa-star-and-crescent"></i></div></div>
-                                <div class="tarot-face tarot-back" style="background:var(--primary-bg); border:1.5px solid rgba(var(--accent-color-rgb),0.3); padding:0; overflow:hidden;">
-                                    <div class="tarot-visual ${isReversed ? 'reversed' : ''}" style="height:100%; width:100%;"><img src="${card.img}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-star tarot-icon-vector\\' style=\\'font-size:40px; color:var(--accent-color);\\'></i>';"></div>
-                                </div>
-                            </div>
+                        <div class="tarot-visual ${isReversed ? 'reversed' : ''}" style="display:inline-block; width:120px; border-radius:8px; overflow:hidden; border:1.5px solid rgba(var(--accent-color-rgb),0.3); box-shadow:0 2px 12px rgba(0,0,0,0.1);">
+                            <img src="${card.img}" style="width:100%; display:block;" onerror="this.outerHTML='<div style=\\'padding:30px; text-align:center;\\'><i class=\\'fas fa-star\\' style=\\'font-size:40px; color:var(--accent-color);\\'></i></div>';">
                         </div>
-                        <div style="font-size:10px; color:var(--text-secondary); margin-top:6px; opacity:0.6;">点击翻牌查看图片</div>
                     </div>` : ''}
                     <div style="margin-bottom:10px;">
                         <div style="font-size:11px; color:var(--accent-color); font-weight:600; margin-bottom:6px; letter-spacing:1px;">
