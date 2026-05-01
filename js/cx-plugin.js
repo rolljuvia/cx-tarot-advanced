@@ -401,6 +401,10 @@
             let newReplyLetter = null;
 
             envelopeData.outbox.forEach(letter => {
+                // ★ 测试模式：强制把回信时间改为寄出后1分钟（正式版删除这2行）
+                if (letter.status === 'pending' && letter.replyTime > letter.sentTime + 2 * 60 * 1000)
+                    letter.replyTime = letter.sentTime + 1 * 60 * 1000;
+
                 if (letter.status === 'pending' && now >= letter.replyTime) {
                     letter.status = 'replied';
                     const replyContent = typeof generateEnvelopeReplyText === 'function'
