@@ -184,7 +184,9 @@
                 e.stopPropagation();
                 const msgEl = wrapper.querySelector('.message');
                 if (!msgEl) return;
-                const textDiv = msgEl.querySelector('div');
+                // 跳过引用部分，取消息本体的文字
+                const divs = msgEl.querySelectorAll(':scope > div:not(.reply-indicator)');
+                const textDiv = divs.length > 0 ? divs[0] : null;
                 if (textDiv) searchCardMeaning(textDiv.textContent || '');
             });
 
@@ -233,6 +235,9 @@
     });
 
     function applyReaction(msgId, wrapper, emoji) {
+        // 只能给对方的消息点赞
+        if (wrapper.classList.contains('sent')) return;
+
         const reactions = loadReactions();
         if (!reactions[msgId]) reactions[msgId] = {};
 
@@ -241,14 +246,21 @@
             if (!reactions[msgId].partner) delete reactions[msgId];
         } else {
             reactions[msgId].user = emoji;
-            if (!reactions[msgId].partner && Math.random() < AUTO_REACTION_PROB) {
-                const capturedId = msgId;
+            // 对方有概率给你的消息回赞（找一条你的消息）
+            if (Math.random() < AUTO_REACTION_PROB) {
+                const capturedWrapper = wrapper;
                 setTimeout(() => {
+                    const allSent = document.querySelectorAll('.message-wrapper.sent');
+                    if (allSent.length === 0) return;
+                    const randomSent = allSent[Math.floor(Math.random() * allSent.length)];
+                    const sentId = randomSent.dataset.msgId || randomSent.dataset.id;
+                    if (!sentId) return;
                     const latest = loadReactions();
-                    if (latest[capturedId] && !latest[capturedId].partner) {
-                        latest[capturedId].partner = REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
+                    if (!latest[sentId]) latest[sentId] = {};
+                    if (!latest[sentId].partner) {
+                        latest[sentId].partner = REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
                         saveReactions(latest);
-                        renderReactionBadge(capturedId, wrapper);
+                        renderReactionBadge(sentId, randomSent);
                     }
                 }, 800 + Math.random() * 2000);
             }
