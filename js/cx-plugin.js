@@ -463,13 +463,16 @@
         section.id = 'cx-tarot-section';
         section.style.cssText = 'margin-top:20px; padding-top:16px; border-top:1px dashed rgba(var(--accent-color-rgb),0.25);';
 
-        const title = document.createElement('div');
-        title.style.cssText = 'text-align:center; font-size:12px; color:var(--accent-color); letter-spacing:2px; margin-bottom:14px; opacity:0.85;';
-        title.innerHTML = '✦ 塔罗讯息 ✦';
-        section.appendChild(title);
+        const sectionTitle = document.createElement('div');
+        sectionTitle.style.cssText = 'text-align:center; font-size:12px; color:var(--accent-color); letter-spacing:2px; margin-bottom:14px; opacity:0.85;';
+        sectionTitle.innerHTML = '✦ 塔罗讯息 ✦';
+        section.appendChild(sectionTitle);
 
-        const grid = document.createElement('div');
-        grid.style.cssText = 'display:flex; gap:8px; justify-content:center; flex-wrap:wrap;';
+        // 正三角：第一行1张居中，第二行2张并排
+        const row1 = document.createElement('div');
+        row1.style.cssText = 'display:flex; justify-content:center; margin-bottom:12px;';
+        const row2 = document.createElement('div');
+        row2.style.cssText = 'display:flex; gap:10px; justify-content:center;';
 
         cards.forEach((card, i) => {
             const pos = SPREAD_POSITIONS[i];
@@ -479,14 +482,14 @@
             const imgRotate = isUpright ? '' : 'transform:rotate(180deg);';
 
             const cardEl = document.createElement('div');
-            cardEl.style.cssText = 'flex:1; min-width:95px; max-width:130px; text-align:center;';
+            cardEl.style.cssText = 'width:130px; text-align:center;';
 
-            // 位置标签
+            // 位置标签：四角星 + 主题色 + 稍大字号
             const posLabel = document.createElement('div');
-            posLabel.style.cssText = 'font-size:10px; color:var(--text-secondary); margin-bottom:4px; letter-spacing:0.5px;';
-            posLabel.textContent = pos;
+            posLabel.style.cssText = 'font-size:12px; color:var(--accent-color); margin-bottom:6px; letter-spacing:0.5px; font-weight:600;';
+            posLabel.textContent = '✦ ' + pos + ' ✦';
 
-            // 翻牌容器：正面牌背，背面纯图片
+            // 翻牌容器
             const flipContainer = document.createElement('div');
             flipContainer.className = 'tarot-container-3d tarot-responsive';
             flipContainer.style.cssText = 'cursor:pointer; margin-bottom:4px; aspect-ratio:2/3;';
@@ -503,7 +506,7 @@
                     </div>
                 </div>`;
 
-            // 牌名 + 正逆位 + 关键词（在图片下方）
+            // 牌名 + 正逆位 + 关键词
             const infoEl = document.createElement('div');
             infoEl.style.cssText = 'display:none;';
             infoEl.innerHTML = `
@@ -511,7 +514,7 @@
                 <div style="font-size:9px; color:var(--accent-color); margin-bottom:3px;">${orientation} · ${card.keyword || ''}</div>
             `;
 
-            // 释义（翻牌后显示）
+            // 释义
             const interpEl = document.createElement('div');
             interpEl.style.cssText = 'font-size:10px; color:var(--text-secondary); line-height:1.5; margin-top:2px; display:none; max-height:80px; overflow-y:auto;';
             interpEl.textContent = meaning || '';
@@ -527,10 +530,14 @@
             cardEl.appendChild(flipContainer);
             cardEl.appendChild(infoEl);
             cardEl.appendChild(interpEl);
-            grid.appendChild(cardEl);
+
+            if (i === 0) row1.appendChild(cardEl);
+            else row2.appendChild(cardEl);
         });
 
-        section.appendChild(grid);
+        section.appendChild(row1);
+        section.appendChild(row2);
+
         const hint = document.createElement('div');
         hint.style.cssText = 'text-align:center; font-size:10px; color:var(--text-secondary); margin-top:10px; opacity:0.6;';
         hint.textContent = '点击牌背翻开查看';
