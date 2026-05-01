@@ -336,7 +336,7 @@
             // 尝试从 customReplyGroups 里找名为"回信"的分组
             if (window.customReplyGroups && window.customReplyGroups.length > 0) {
                 const letterGroup = window.customReplyGroups.find(g =>
-                    g.name === '回信' && !g.disabled && g.items && g.items.length > 0
+                    g.name === '回信' && g.items && g.items.length > 0
                 );
                 if (letterGroup) pool = [...letterGroup.items];
             }
