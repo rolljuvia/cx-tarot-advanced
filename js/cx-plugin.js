@@ -376,11 +376,18 @@
                 pool = [...customReplies];
             }
             if (pool.length === 0) return '…';
-            const sentenceCount = Math.floor(Math.random() * 3) + 1;
+            const sentenceCount = Math.floor(Math.random() * 4) + 5; // 5-8 句
             let reply = '';
+            const used = new Set();
             for (let i = 0; i < sentenceCount; i++) {
-                const sentence = pool[Math.floor(Math.random() * pool.length)];
-                const punct = Math.random() < 0.2 ? '！' : (Math.random() < 0.2 ? '...' : '。');
+                let sentence;
+                let attempts = 0;
+                do {
+                    sentence = pool[Math.floor(Math.random() * pool.length)];
+                    attempts++;
+                } while (used.has(sentence) && attempts < 20);
+                used.add(sentence);
+                const punct = Math.random() < 0.2 ? '...' : '。';
                 reply += sentence + punct;
             }
             return reply;
@@ -465,40 +472,56 @@
             const isUpright = card.isUpright;
             const orientation = isUpright ? '正位' : '逆位';
             const meaning = isUpright ? card.upright : card.reversed;
+            const imgRotate = isUpright ? '' : 'transform:rotate(180deg);';
 
             const cardEl = document.createElement('div');
             cardEl.style.cssText = 'flex:1; min-width:95px; max-width:130px; text-align:center;';
 
+            // 位置标签
+            const posLabel = document.createElement('div');
+            posLabel.style.cssText = 'font-size:10px; color:var(--text-secondary); margin-bottom:4px; letter-spacing:0.5px;';
+            posLabel.textContent = pos;
+
+            // 翻牌容器：正面牌背，背面纯图片
             const flipContainer = document.createElement('div');
             flipContainer.className = 'tarot-container-3d tarot-responsive';
-            flipContainer.style.cssText = 'cursor:pointer; margin-bottom:6px; aspect-ratio:2/3; max-height:160px;';
+            flipContainer.style.cssText = 'cursor:pointer; margin-bottom:4px; aspect-ratio:2/3;';
             flipContainer.innerHTML = `
                 <div class="tarot-card-inner">
                     <div class="tarot-face tarot-front">
                         <div class="tarot-pattern" style="font-size:16px;"><i class="fas fa-star-and-crescent"></i></div>
                     </div>
-                    <div class="tarot-face tarot-back" style="background:linear-gradient(135deg,var(--secondary-bg),rgba(var(--accent-color-rgb),0.07)); border:1.5px solid rgba(var(--accent-color-rgb),0.3); padding:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow-y:auto;">
-                        ${card.img ? `<div class="tarot-visual ${isUpright ? '' : 'reversed'}" style="height:80px; flex-shrink:0; margin-bottom:4px;"><img src="${card.img}" style="height:100%; object-fit:contain; border-radius:4px;" onerror="this.parentElement.innerHTML='<i class=\\'fas ${card.icon || 'fa-star'} tarot-icon-vector\\' style=\\'font-size:32px; color:var(--accent-color);\\'></i>';"></div>` : `<div class="tarot-visual ${isUpright ? '' : 'reversed'}" style="height:80px; flex-shrink:0;"><i class="fas ${card.icon || 'fa-star'} tarot-icon-vector" style="font-size:32px; color:var(--accent-color);"></i></div>`}
-                        <div style="font-size:12px; font-weight:700; color:var(--text-primary); margin-bottom:2px;">${card.name}</div>
-                        <div style="font-size:9px; color:var(--accent-color); margin-bottom:2px;">${orientation} · ${card.keyword || ''}</div>
+                    <div class="tarot-face tarot-back" style="background:var(--primary-bg); border:1.5px solid rgba(var(--accent-color-rgb),0.3); padding:0; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                        ${card.img
+                            ? `<img src="${card.img}" style="width:100%; height:100%; object-fit:cover; ${imgRotate}" onerror="this.outerHTML='<i class=\\'fas fa-star\\' style=\\'font-size:28px; color:var(--accent-color);\\'></i>';">`
+                            : `<i class="fas ${card.icon || 'fa-star'}" style="font-size:28px; color:var(--accent-color);"></i>`
+                        }
                     </div>
                 </div>`;
 
+            // 牌名 + 正逆位 + 关键词（在图片下方）
+            const infoEl = document.createElement('div');
+            infoEl.style.cssText = 'display:none;';
+            infoEl.innerHTML = `
+                <div style="font-size:11px; font-weight:700; color:var(--text-primary); margin-bottom:1px;">${card.name}</div>
+                <div style="font-size:9px; color:var(--accent-color); margin-bottom:3px;">${orientation} · ${card.keyword || ''}</div>
+            `;
+
+            // 释义（翻牌后显示）
             const interpEl = document.createElement('div');
-            interpEl.style.cssText = 'font-size:10px; color:var(--text-secondary); line-height:1.5; margin-top:4px; display:none; max-height:80px; overflow-y:auto;';
+            interpEl.style.cssText = 'font-size:10px; color:var(--text-secondary); line-height:1.5; margin-top:2px; display:none; max-height:80px; overflow-y:auto;';
             interpEl.textContent = meaning || '';
 
             flipContainer.addEventListener('click', function () {
                 this.classList.toggle('flipped');
-                interpEl.style.display = this.classList.contains('flipped') ? 'block' : 'none';
+                const isFlipped = this.classList.contains('flipped');
+                infoEl.style.display = isFlipped ? 'block' : 'none';
+                interpEl.style.display = isFlipped ? 'block' : 'none';
             });
-
-            const posLabel = document.createElement('div');
-            posLabel.style.cssText = 'font-size:10px; color:var(--text-secondary); margin-bottom:4px; letter-spacing:0.5px;';
-            posLabel.textContent = pos;
 
             cardEl.appendChild(posLabel);
             cardEl.appendChild(flipContainer);
+            cardEl.appendChild(infoEl);
             cardEl.appendChild(interpEl);
             grid.appendChild(cardEl);
         });
