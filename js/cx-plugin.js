@@ -51,6 +51,17 @@
             .message-meta-actions {
                 top: -32px !important;
             }
+            /* 对方消息：操作栏靠左对齐，防止左边溢出屏幕 */
+            .message-wrapper.received .message-meta-actions {
+                right: auto !important;
+                left: 0 !important;
+            }
+            /* 防止操作栏被裁切 */
+            .message-content-wrapper,
+            .message-wrapper,
+            .message {
+                overflow: visible !important;
+            }
 
             /* emoji 选择浮层 */
             .cx-emoji-picker {
@@ -747,7 +758,29 @@
         waitForElement('#envelope-modal', () => {
             patchEnvelopeForTarot();
             patchViewEnvLetter();
+            patchEnvelopeReplyDelay();
+
+            // 定期检查回信（每 15 秒）
+            setInterval(() => {
+                if (typeof checkEnvelopeStatus === 'function') checkEnvelopeStatus();
+            }, 15000);
         });
+    }
+
+    /* ── 测试模式：回信延迟改为 1 分钟（上线时改回正常值或删除此函数） ── */
+    function patchEnvelopeReplyDelay() {
+        // 拦截 outbox.push，把 replyTime 改成 1 分钟后
+        const origPush = Array.prototype.push;
+        if (typeof envelopeData !== 'undefined' && envelopeData.outbox) {
+            const origOutboxPush = envelopeData.outbox.push;
+            envelopeData.outbox.push = function (letter) {
+                if (letter && letter.replyTime && letter.status === 'pending') {
+                    // ★ 测试用：1 分钟回信。正式版改为 10-24 小时
+                    letter.replyTime = Date.now() + 1 * 60 * 1000;
+                }
+                return origPush.call(this, letter);
+            };
+        }
     }
 
     function waitForElement(selector, callback, maxWait) {
