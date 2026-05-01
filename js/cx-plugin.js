@@ -127,13 +127,14 @@
             }
             .cx-card-body { padding: 18px 20px; }
             .cx-card-close {
-                position: absolute; top: 12px; right: 14px;
-                background: rgba(255,255,255,0.2); border: none; color: #fff;
-                width: 28px; height: 28px; border-radius: 50%;
-                font-size: 14px; cursor: pointer;
+                position: absolute; top: 10px; right: 10px;
+                background: rgba(255,255,255,0.25); border: none; color: #fff;
+                width: 36px; height: 36px; border-radius: 50%;
+                font-size: 18px; cursor: pointer;
                 display: flex; align-items: center; justify-content: center;
+                -webkit-tap-highlight-color: transparent;
             }
-            .cx-card-close:hover { background: rgba(255,255,255,0.35); }
+            .cx-card-close:hover, .cx-card-close:active { background: rgba(255,255,255,0.4); }
         `;
         document.head.appendChild(style);
     }
@@ -438,7 +439,7 @@
             const meaning = isUpright ? card.upright : card.reversed;
 
             const cardEl = document.createElement('div');
-            cardEl.style.cssText = 'flex:1; min-width:90px; max-width:120px; text-align:center;';
+            cardEl.style.cssText = 'flex:1; min-width:95px; max-width:130px; text-align:center;';
 
             const flipContainer = document.createElement('div');
             flipContainer.className = 'tarot-container-3d tarot-responsive';
@@ -449,7 +450,7 @@
                         <div class="tarot-pattern" style="font-size:16px;"><i class="fas fa-star-and-crescent"></i></div>
                     </div>
                     <div class="tarot-face tarot-back" style="background:linear-gradient(135deg,var(--secondary-bg),rgba(var(--accent-color-rgb),0.07)); border:1.5px solid rgba(var(--accent-color-rgb),0.3); padding:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow-y:auto;">
-                        ${card.img ? `<div class="tarot-visual ${isUpright ? '' : 'reversed'}" style="height:60px; flex-shrink:0; margin-bottom:4px;"><img src="${card.img}" style="height:100%; object-fit:contain; border-radius:4px;" onerror="this.parentElement.innerHTML='<i class=\\'fas ${card.icon || 'fa-star'} tarot-icon-vector\\' style=\\'font-size:32px; color:var(--accent-color);\\'></i>';"></div>` : `<div class="tarot-visual ${isUpright ? '' : 'reversed'}" style="height:60px; flex-shrink:0;"><i class="fas ${card.icon || 'fa-star'} tarot-icon-vector" style="font-size:32px; color:var(--accent-color);"></i></div>`}
+                        ${card.img ? `<div class="tarot-visual ${isUpright ? '' : 'reversed'}" style="height:80px; flex-shrink:0; margin-bottom:4px;"><img src="${card.img}" style="height:100%; object-fit:contain; border-radius:4px;" onerror="this.parentElement.innerHTML='<i class=\\'fas ${card.icon || 'fa-star'} tarot-icon-vector\\' style=\\'font-size:32px; color:var(--accent-color);\\'></i>';"></div>` : `<div class="tarot-visual ${isUpright ? '' : 'reversed'}" style="height:80px; flex-shrink:0;"><i class="fas ${card.icon || 'fa-star'} tarot-icon-vector" style="font-size:32px; color:var(--accent-color);"></i></div>`}
                         <div style="font-size:12px; font-weight:700; color:var(--text-primary); margin-bottom:2px;">${card.name}</div>
                         <div style="font-size:9px; color:var(--accent-color); margin-bottom:2px;">${orientation} · ${card.keyword || ''}</div>
                     </div>
@@ -625,9 +626,7 @@
                 <div class="cx-card-body">
                     ${card.img ? `
                     <div style="text-align:center; margin-bottom:14px;">
-                        <div class="tarot-visual ${isReversed ? 'reversed' : ''}" style="display:inline-block; width:120px; border-radius:8px; overflow:hidden; border:1.5px solid rgba(var(--accent-color-rgb),0.3); box-shadow:0 2px 12px rgba(0,0,0,0.1);">
-                            <img src="${card.img}" style="width:100%; display:block;" onerror="this.outerHTML='<div style=\\'padding:30px; text-align:center;\\'><i class=\\'fas fa-star\\' style=\\'font-size:40px; color:var(--accent-color);\\'></i></div>';">
-                        </div>
+                        <img src="${card.img}" style="width:200px; max-width:80%; border-radius:10px; border:1.5px solid rgba(var(--accent-color-rgb),0.3); box-shadow:0 2px 12px rgba(0,0,0,0.1); display:block; margin:0 auto;" onerror="this.outerHTML='<div style=\\'padding:30px; text-align:center;\\'><i class=\\'fas fa-star\\' style=\\'font-size:40px; color:var(--accent-color);\\'></i></div>';">
                     </div>` : ''}
                     <div style="margin-bottom:10px;">
                         <div style="font-size:11px; color:var(--accent-color); font-weight:600; margin-bottom:6px; letter-spacing:1px;">
