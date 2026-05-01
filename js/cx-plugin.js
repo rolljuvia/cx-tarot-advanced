@@ -3,18 +3,14 @@
  * 基于 aielin17/milk 原版，集中所有改动
  *
  * 功能：
- * 1. 跳过声明页（splash-declaration）
- * 2. 消息 emoji 点赞（集成在原版操作栏里）
- * 3. 回信附带 3 张塔罗牌（牌阵：链接状态 / 感受 / 传达）
- * 4. 消息搜索按钮（集成在原版操作栏里）→ 快速查询塔罗/雷诺曼牌义
+ * 1. 跳过声明页
+ * 2. 消息 emoji 点赞（操作栏内）
+ * 3. 回信附带 3 张塔罗牌
+ * 4. 消息搜索按钮（操作栏内）→ 快速查询牌义
  */
 
 (function () {
     'use strict';
-
-    /* ═══════════════════════════════════════════
-     *  0. 常量
-     * ═══════════════════════════════════════════ */
 
     const STORAGE_PREFIX = 'cx_';
 
@@ -43,22 +39,20 @@
     }
 
     /* ═══════════════════════════════════════════
-     *  2. Emoji 点赞
+     *  2. CSS
      * ═══════════════════════════════════════════ */
-
-    function loadReactions() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'reactions') || '{}'); }
-        catch { return {}; }
-    }
-    function saveReactions(data) {
-        localStorage.setItem(STORAGE_PREFIX + 'reactions', JSON.stringify(data));
-    }
 
     function injectPluginCSS() {
         if (document.getElementById('cx-plugin-css')) return;
         const style = document.createElement('style');
         style.id = 'cx-plugin-css';
         style.textContent = `
+            /* 操作栏往上移，避免误触消息气泡 */
+            .message-meta-actions {
+                top: -32px !important;
+            }
+
+            /* emoji 选择浮层 */
             .cx-emoji-picker {
                 display: none;
                 position: absolute;
@@ -92,6 +86,8 @@
                 transform: scale(1.2);
                 background: rgba(var(--accent-color-rgb), 0.1);
             }
+
+            /* reaction badge */
             .cx-reaction-container {
                 display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px;
             }
@@ -103,6 +99,8 @@
             }
             .cx-reaction-badge:hover { transform: scale(1.12); }
             .cx-reaction-badge .cx-count { font-size: 10px; color: var(--text-secondary); }
+
+            /* 牌义弹窗 */
             .cx-card-overlay {
                 position: fixed; inset: 0;
                 background: rgba(0,0,0,0.5);
@@ -119,6 +117,8 @@
                 overflow: hidden;
                 box-shadow: 0 16px 48px rgba(0,0,0,0.25);
                 animation: cxSlideUp 0.3s cubic-bezier(0.22,1,0.36,1);
+                max-height: 85vh;
+                overflow-y: auto;
             }
             @keyframes cxSlideUp { from{opacity:0;transform:translateY(20px) scale(0.95)} to{opacity:1;transform:translateY(0) scale(1)} }
             .cx-card-header {
@@ -127,30 +127,42 @@
             }
             .cx-card-body { padding: 18px 20px; }
             .cx-card-close {
-                position: absolute; top: 10px; right: 10px;
+                position: absolute; top: 8px; right: 8px;
                 background: rgba(255,255,255,0.25); border: none; color: #fff;
-                width: 36px; height: 36px; border-radius: 50%;
-                font-size: 18px; cursor: pointer;
+                width: 44px; height: 44px; border-radius: 50%;
+                font-size: 20px; cursor: pointer;
                 display: flex; align-items: center; justify-content: center;
                 -webkit-tap-highlight-color: transparent;
+                z-index: 10;
             }
             .cx-card-close:hover, .cx-card-close:active { background: rgba(255,255,255,0.4); }
         `;
         document.head.appendChild(style);
     }
 
-    /* ── 给每条消息的操作栏追加点赞+搜索按钮 ── */
+    /* ═══════════════════════════════════════════
+     *  3. Emoji 点赞
+     * ═══════════════════════════════════════════ */
+
+    function loadReactions() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'reactions') || '{}'); }
+        catch { return {}; }
+    }
+    function saveReactions(data) {
+        localStorage.setItem(STORAGE_PREFIX + 'reactions', JSON.stringify(data));
+    }
+
     function enhanceActionBars() {
         const container = document.getElementById('chat-container');
         if (!container) return;
 
         container.querySelectorAll('.message-wrapper').forEach(wrapper => {
             if (wrapper.dataset.cxEnhanced) return;
-            wrapper.dataset.cxEnhanced = '1';
 
             const actionsDiv = wrapper.querySelector('.message-meta-actions');
             if (!actionsDiv) return;
 
+            wrapper.dataset.cxEnhanced = '1';
             const msgId = wrapper.dataset.msgId || wrapper.dataset.id;
 
             // 点赞按钮
@@ -176,7 +188,6 @@
                 if (textDiv) searchCardMeaning(textDiv.textContent || '');
             });
 
-            // 插到删除按钮前面
             const deleteBtn = actionsDiv.querySelector('.delete-btn');
             if (deleteBtn) {
                 actionsDiv.insertBefore(emojiBtn, deleteBtn);
@@ -314,7 +325,7 @@
     }
 
     /* ═══════════════════════════════════════════
-     *  3. 回信 3 张塔罗牌
+     *  4. 回信 3 张塔罗牌
      * ═══════════════════════════════════════════ */
 
     function drawThreeCards() {
@@ -332,23 +343,17 @@
         // 覆盖回信文本生成：优先从"回信"分组抽取
         window.generateEnvelopeReplyText = function () {
             let pool = [];
-
-            // 尝试从 customReplyGroups 里找名为"回信"的分组
             if (window.customReplyGroups && window.customReplyGroups.length > 0) {
                 const letterGroup = window.customReplyGroups.find(g =>
                     g.name === '回信' && g.items && g.items.length > 0
                 );
                 if (letterGroup) pool = [...letterGroup.items];
             }
-
-            // 如果没有"回信"分组或为空，fallback 到全部 customReplies
             if (pool.length === 0 && typeof customReplies !== 'undefined') {
                 pool = [...customReplies];
             }
-
             if (pool.length === 0) return '…';
-
-            const sentenceCount = Math.floor(Math.random() * 3) + 1; // 1-3 句
+            const sentenceCount = Math.floor(Math.random() * 3) + 1;
             let reply = '';
             for (let i = 0; i < sentenceCount; i++) {
                 const sentence = pool[Math.floor(Math.random() * pool.length)];
@@ -484,7 +489,7 @@
     }
 
     /* ═══════════════════════════════════════════
-     *  4. 搜索牌义
+     *  5. 搜索牌义
      * ═══════════════════════════════════════════ */
 
     const NUM_MAP = {
@@ -609,6 +614,7 @@
         const orientLabel = isReversed ? '逆位' : '正位';
         const meaning = isReversed ? card.reversed : card.upright;
         const typeNames = { major: '大阿卡纳', wands: '权杖', cups: '圣杯', swords: '宝剑', pentacles: '星币' };
+        const imgRotate = isReversed ? 'transform:rotate(180deg);' : '';
 
         const overlay = document.createElement('div');
         overlay.className = 'cx-card-overlay';
@@ -626,7 +632,7 @@
                 <div class="cx-card-body">
                     ${card.img ? `
                     <div style="text-align:center; margin-bottom:14px;">
-                        <img src="${card.img}" style="width:200px; max-width:80%; border-radius:10px; border:1.5px solid rgba(var(--accent-color-rgb),0.3); box-shadow:0 2px 12px rgba(0,0,0,0.1); display:block; margin:0 auto;" onerror="this.outerHTML='<div style=\\'padding:30px; text-align:center;\\'><i class=\\'fas fa-star\\' style=\\'font-size:40px; color:var(--accent-color);\\'></i></div>';">
+                        <img src="${card.img}" style="width:200px; max-width:80%; border-radius:10px; border:1.5px solid rgba(var(--accent-color-rgb),0.3); box-shadow:0 2px 12px rgba(0,0,0,0.1); display:block; margin:0 auto; ${imgRotate}" onerror="this.outerHTML='<div style=\\'padding:30px; text-align:center;\\'><i class=\\'fas fa-star\\' style=\\'font-size:40px; color:var(--accent-color);\\'></i></div>';">
                     </div>` : ''}
                     <div style="margin-bottom:10px;">
                         <div style="font-size:11px; color:var(--accent-color); font-weight:600; margin-bottom:6px; letter-spacing:1px;">
@@ -698,7 +704,7 @@
     }
 
     /* ═══════════════════════════════════════════
-     *  5. 初始化
+     *  6. 初始化
      * ═══════════════════════════════════════════ */
 
     function init() {
@@ -706,14 +712,24 @@
         injectPluginCSS();
 
         waitForElement('#chat-container', () => {
+            // 用 MutationObserver 确保每次 DOM 变化后都补按钮
+            const chatContainer = document.getElementById('chat-container');
+            const observer = new MutationObserver(() => {
+                enhanceActionBars();
+            });
+            observer.observe(chatContainer, { childList: true, subtree: true });
+
+            // 也 patch renderMessages 作为备份
             const origRender = window.renderMessages;
             if (origRender) {
                 window.renderMessages = function () {
                     origRender.apply(this, arguments);
-                    setTimeout(() => { enhanceActionBars(); }, 50);
+                    setTimeout(() => { enhanceActionBars(); }, 80);
                 };
             }
-            setTimeout(() => { enhanceActionBars(); }, 500);
+
+            // 首次
+            setTimeout(() => { enhanceActionBars(); }, 300);
         });
 
         waitForElement('#envelope-modal', () => {
