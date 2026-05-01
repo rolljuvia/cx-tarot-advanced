@@ -711,17 +711,17 @@
         style.id = 'cx-search-css';
         style.textContent = `
             .cx-search-btn {
-                display: none;
+                display: flex;
                 position: absolute;
                 top: 50%;
                 transform: translateY(-50%);
-                width: 24px;
-                height: 24px;
+                width: 22px;
+                height: 22px;
                 border-radius: 50%;
                 border: 1px solid var(--border-color);
                 background: var(--secondary-bg);
                 color: var(--text-secondary);
-                font-size: 11px;
+                font-size: 10px;
                 cursor: pointer;
                 align-items: center;
                 justify-content: center;
@@ -729,22 +729,21 @@
                 transition: all 0.15s;
                 padding: 0;
                 line-height: 1;
-                box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+                box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+                opacity: 0.45;
             }
-            .message-wrapper:hover .cx-search-btn,
-            .message-wrapper:active .cx-search-btn {
-                display: flex;
-            }
-            .message-wrapper.sent .cx-search-btn {
-                left: -30px;
-            }
-            .message-wrapper.received .cx-search-btn {
-                right: -30px;
-            }
-            .cx-search-btn:hover {
+            .cx-search-btn:hover,
+            .cx-search-btn:active {
+                opacity: 1;
                 background: var(--accent-color);
                 color: #fff;
                 border-color: var(--accent-color);
+            }
+            .message-wrapper.sent .cx-search-btn {
+                left: -28px;
+            }
+            .message-wrapper.received .cx-search-btn {
+                right: -28px;
             }
 
             /* 牌义弹窗 */
