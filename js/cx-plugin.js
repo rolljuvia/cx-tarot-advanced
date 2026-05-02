@@ -329,76 +329,32 @@
         });
     }
 
-    /* ── 对方自动点赞：你的消息被已读(√√)后，35%概率点赞 ── */
-    function setupAutoReact() {
-        const container = document.getElementById('chat-container');
-        if (!container) return;
+    /* ── 对方自动点赞：对方回复后15%概率给你最近的消息点赞 ── */
 
-        // 记录已处理过的消息ID，防止重复触发
-        const processed = new Set();
+    function patchSimulateReplyForReactions() {
+        const orig = window.simulateReply;
+        if (!orig) return;
 
-        const observer = new MutationObserver(() => {
-            container.querySelectorAll('.message-wrapper.sent').forEach(wrapper => {
-                const msgId = wrapper.dataset.msgId || wrapper.dataset.id;
-                if (!msgId || processed.has(msgId)) return;
+        window.simulateReply = function () {
+            orig.apply(this, arguments);
 
-                // 检查是否有已读标记（√√）
-                const meta = wrapper.querySelector('.message-meta');
-                if (!meta) return;
-                const metaText = meta.textContent || '';
-                // 原版已读用 ✓✓ 或 √√ 表示
-                if (!metaText.includes('✓✓') && !metaText.includes('√√')) return;
-
-                processed.add(msgId);
-
-                // 35% 概率对方点赞这条消息
-                if (Math.random() >= AUTO_REACTION_PROB) return;
-
-                // 检查是否已经有对方的点赞了
-                const reactions = loadReactions();
-                if (reactions[msgId] && reactions[msgId].partner) return;
-
-                // 延迟 2-6 秒后点赞，模拟真实感
+            // 对方回复后，15% 概率给你最近一条文字消息点赞
+            if (typeof messages !== 'undefined' && messages.length > 0 && Math.random() < 0.15) {
+                const userMsg = messages.filter(m => m.sender === 'user' && !m.image).pop();
+                if (!userMsg) return;
+                const msgId = String(userMsg.id);
+                const delay = 2000 + Math.random() * 3000;
                 setTimeout(() => {
-                    const latest = loadReactions();
-                    if (!latest[msgId]) latest[msgId] = {};
-                    if (!latest[msgId].partner) {
-                        latest[msgId].partner = REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
-                        saveReactions(latest);
-                        // 重新找 wrapper（DOM可能更新过）
-                        const w = container.querySelector(`.message-wrapper[data-msg-id="${msgId}"], .message-wrapper[data-id="${msgId}"]`);
-                        if (w) renderReactionBadge(msgId, w);
-                    }
-                }, 2000 + Math.random() * 4000);
-            });
-        });
-
-        observer.observe(container, { childList: true, subtree: true, characterData: true });
-
-        // 首次也扫一遍已有的已读消息
-        setTimeout(() => {
-            container.querySelectorAll('.message-wrapper.sent').forEach(wrapper => {
-                const msgId = wrapper.dataset.msgId || wrapper.dataset.id;
-                if (!msgId || processed.has(msgId)) return;
-                const meta = wrapper.querySelector('.message-meta');
-                if (!meta) return;
-                const metaText = meta.textContent || '';
-                if (!metaText.includes('✓✓') && !metaText.includes('√√')) return;
-                processed.add(msgId);
-                if (Math.random() >= AUTO_REACTION_PROB) return;
-                const reactions = loadReactions();
-                if (reactions[msgId] && reactions[msgId].partner) return;
-                setTimeout(() => {
-                    const latest = loadReactions();
-                    if (!latest[msgId]) latest[msgId] = {};
-                    if (!latest[msgId].partner) {
-                        latest[msgId].partner = REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
-                        saveReactions(latest);
-                        renderReactionBadge(msgId, wrapper);
-                    }
-                }, 2000 + Math.random() * 4000);
-            });
-        }, 500);
+                    const reactions = loadReactions();
+                    if (reactions[msgId] && reactions[msgId].partner) return; // 已经点过了
+                    if (!reactions[msgId]) reactions[msgId] = {};
+                    reactions[msgId].partner = REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
+                    saveReactions(reactions);
+                    const wrapper = document.querySelector('[data-msg-id="' + msgId + '"]') || document.querySelector('[data-id="' + msgId + '"]');
+                    if (wrapper) renderReactionBadge(msgId, wrapper);
+                }, delay);
+            }
+        };
     }
 
     /* ═══════════════════════════════════════════
@@ -870,8 +826,8 @@
             // 首次
             setTimeout(() => { enhanceActionBars(); }, 300);
 
-            // 对方自动点赞
-            setupAutoReact();
+            // 对方自动点赞（hook simulateReply）
+            patchSimulateReplyForReactions();
         });
 
         waitForElement('#envelope-modal', () => {
