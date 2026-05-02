@@ -15,9 +15,9 @@
     const STORAGE_PREFIX = 'cx_';
 
     const SPREAD_POSITIONS = [
-        '你与他的链接状态',
-        '他看到信时的感受',
-        '他想传达给你的话'
+        '主牌',
+        '补充牌',
+        '补充牌'
     ];
 
     const REACTION_EMOJIS = [
@@ -257,24 +257,6 @@
             if (!reactions[msgId].partner) delete reactions[msgId];
         } else {
             reactions[msgId].user = emoji;
-            // 对方有概率给你的消息回赞（找一条你的消息）
-            if (Math.random() < AUTO_REACTION_PROB) {
-                const capturedWrapper = wrapper;
-                setTimeout(() => {
-                    const allSent = document.querySelectorAll('.message-wrapper.sent');
-                    if (allSent.length === 0) return;
-                    const randomSent = allSent[Math.floor(Math.random() * allSent.length)];
-                    const sentId = randomSent.dataset.msgId || randomSent.dataset.id;
-                    if (!sentId) return;
-                    const latest = loadReactions();
-                    if (!latest[sentId]) latest[sentId] = {};
-                    if (!latest[sentId].partner) {
-                        latest[sentId].partner = REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
-                        saveReactions(latest);
-                        renderReactionBadge(sentId, randomSent);
-                    }
-                }, 800 + Math.random() * 2000);
-            }
         }
 
         saveReactions(reactions);
@@ -347,6 +329,78 @@
         });
     }
 
+    /* ── 对方自动点赞：你的消息被已读(√√)后，35%概率点赞 ── */
+    function setupAutoReact() {
+        const container = document.getElementById('chat-container');
+        if (!container) return;
+
+        // 记录已处理过的消息ID，防止重复触发
+        const processed = new Set();
+
+        const observer = new MutationObserver(() => {
+            container.querySelectorAll('.message-wrapper.sent').forEach(wrapper => {
+                const msgId = wrapper.dataset.msgId || wrapper.dataset.id;
+                if (!msgId || processed.has(msgId)) return;
+
+                // 检查是否有已读标记（√√）
+                const meta = wrapper.querySelector('.message-meta');
+                if (!meta) return;
+                const metaText = meta.textContent || '';
+                // 原版已读用 ✓✓ 或 √√ 表示
+                if (!metaText.includes('✓✓') && !metaText.includes('√√')) return;
+
+                processed.add(msgId);
+
+                // 35% 概率对方点赞这条消息
+                if (Math.random() >= AUTO_REACTION_PROB) return;
+
+                // 检查是否已经有对方的点赞了
+                const reactions = loadReactions();
+                if (reactions[msgId] && reactions[msgId].partner) return;
+
+                // 延迟 2-6 秒后点赞，模拟真实感
+                setTimeout(() => {
+                    const latest = loadReactions();
+                    if (!latest[msgId]) latest[msgId] = {};
+                    if (!latest[msgId].partner) {
+                        latest[msgId].partner = REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
+                        saveReactions(latest);
+                        // 重新找 wrapper（DOM可能更新过）
+                        const w = container.querySelector(`.message-wrapper[data-msg-id="${msgId}"], .message-wrapper[data-id="${msgId}"]`);
+                        if (w) renderReactionBadge(msgId, w);
+                    }
+                }, 2000 + Math.random() * 4000);
+            });
+        });
+
+        observer.observe(container, { childList: true, subtree: true, characterData: true });
+
+        // 首次也扫一遍已有的已读消息
+        setTimeout(() => {
+            container.querySelectorAll('.message-wrapper.sent').forEach(wrapper => {
+                const msgId = wrapper.dataset.msgId || wrapper.dataset.id;
+                if (!msgId || processed.has(msgId)) return;
+                const meta = wrapper.querySelector('.message-meta');
+                if (!meta) return;
+                const metaText = meta.textContent || '';
+                if (!metaText.includes('✓✓') && !metaText.includes('√√')) return;
+                processed.add(msgId);
+                if (Math.random() >= AUTO_REACTION_PROB) return;
+                const reactions = loadReactions();
+                if (reactions[msgId] && reactions[msgId].partner) return;
+                setTimeout(() => {
+                    const latest = loadReactions();
+                    if (!latest[msgId]) latest[msgId] = {};
+                    if (!latest[msgId].partner) {
+                        latest[msgId].partner = REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
+                        saveReactions(latest);
+                        renderReactionBadge(msgId, wrapper);
+                    }
+                }, 2000 + Math.random() * 4000);
+            });
+        }, 500);
+    }
+
     /* ═══════════════════════════════════════════
      *  4. 回信 3 张塔罗牌
      * ═══════════════════════════════════════════ */
@@ -376,7 +430,7 @@
                 pool = [...customReplies];
             }
             if (pool.length === 0) return '…';
-            const sentenceCount = Math.floor(Math.random() * 4) + 5; // 5-8 句
+            const sentenceCount = Math.floor(Math.random() * 3) + 1; // 1-3 句
             let reply = '';
             const used = new Set();
             for (let i = 0; i < sentenceCount; i++) {
@@ -480,14 +534,10 @@
             const orientation = isUpright ? '正位' : '逆位';
             const meaning = isUpright ? card.upright : card.reversed;
             const imgRotate = isUpright ? '' : 'transform:rotate(180deg);';
+            const posSymbol = i === 0 ? '✦' : '✧';
 
             const cardEl = document.createElement('div');
             cardEl.style.cssText = 'width:130px; text-align:center;';
-
-            // 位置标签：四角星 + 主题色 + 稍大字号
-            const posLabel = document.createElement('div');
-            posLabel.style.cssText = 'font-size:12px; color:var(--accent-color); margin-bottom:6px; letter-spacing:0.5px; font-weight:600;';
-            posLabel.textContent = '✦ ' + pos + ' ✦';
 
             // 翻牌容器
             const flipContainer = document.createElement('div');
@@ -497,6 +547,7 @@
                 <div class="tarot-card-inner">
                     <div class="tarot-face tarot-front">
                         <div class="tarot-pattern" style="font-size:16px;"><i class="fas fa-star-and-crescent"></i></div>
+                        <div style="position:absolute; bottom:10px; left:0; right:0; text-align:center; font-size:10px; color:rgba(255,255,255,0.7); letter-spacing:1px; font-weight:600;">${posSymbol} ${pos} ${posSymbol}</div>
                     </div>
                     <div class="tarot-face tarot-back" style="background:var(--primary-bg); border:1.5px solid rgba(var(--accent-color-rgb),0.3); padding:0; overflow:hidden; display:flex; align-items:center; justify-content:center;">
                         ${card.img
@@ -526,7 +577,6 @@
                 interpEl.style.display = isFlipped ? 'block' : 'none';
             });
 
-            cardEl.appendChild(posLabel);
             cardEl.appendChild(flipContainer);
             cardEl.appendChild(infoEl);
             cardEl.appendChild(interpEl);
@@ -597,16 +647,48 @@
         if (clean.endsWith('正位')) { orientation = 'upright'; cardText = clean.slice(0, -2); }
         else if (clean.endsWith('逆位')) { orientation = 'reversed'; cardText = clean.slice(0, -2); }
 
-        let majorName = null;
-        const romanSuffix = cardText.match(/([IVXL]+|\d+)$/);
-        if (romanSuffix) {
-            const nameWithout = cardText.slice(0, -romanSuffix[0].length);
-            if (ALL_78_TAROT_CARDS.find(c => c.type === 'major' && c.name === nameWithout)) majorName = nameWithout;
-            if (!majorName && ROMAN_MAP[romanSuffix[0]] === nameWithout) majorName = nameWithout;
-        }
-
+        // 直接匹配牌名
         let found = ALL_78_TAROT_CARDS.find(c => c.name === cardText);
-        if (!found && majorName) found = ALL_78_TAROT_CARDS.find(c => c.name === majorName);
+
+        // 大阿卡纳：去掉尾部罗马数字或阿拉伯数字后匹配
+        if (!found) {
+            const romanSuffix = cardText.match(/([IVXL]+|\d+)$/);
+            if (romanSuffix) {
+                const nameWithout = cardText.slice(0, -romanSuffix[0].length);
+                // 方式1：去掉数字后直接在牌库里找
+                found = ALL_78_TAROT_CARDS.find(c => c.type === 'major' && c.name === nameWithout);
+                // 方式2：罗马数字映射找名字，看是否跟去掉数字后的名字一致或是别名
+                if (!found && ROMAN_MAP[romanSuffix[0]]) {
+                    const mappedName = ROMAN_MAP[romanSuffix[0]];
+                    // 名字完全一致（如 女皇III → ROMAN_MAP[III]=女皇 → 找女皇）
+                    if (mappedName === nameWithout) {
+                        found = ALL_78_TAROT_CARDS.find(c => c.type === 'major' && c.name === mappedName);
+                    }
+                    // 名字是别名（如 女帝III → ROMAN_MAP[III]=女皇 → TITLE_MAP里女皇的别名包含女帝）
+                    if (!found) {
+                        for (const [canonical, aliases] of Object.entries(TITLE_MAP)) {
+                            if ((canonical === nameWithout || aliases.includes(nameWithout)) &&
+                                (canonical === mappedName || aliases.includes(mappedName) || mappedName === canonical)) {
+                                found = ALL_78_TAROT_CARDS.find(c => c.type === 'major' && c.name === canonical);
+                                if (!found) found = ALL_78_TAROT_CARDS.find(c => c.type === 'major' && aliases.some(a => c.name === a));
+                                if (found) break;
+                            }
+                        }
+                    }
+                    // 方式3：直接用映射名去找
+                    if (!found) found = ALL_78_TAROT_CARDS.find(c => c.type === 'major' && c.name === mappedName);
+                }
+                // 方式4：nameWithout 是别名，直接查 TITLE_MAP
+                if (!found && nameWithout) {
+                    for (const [canonical, aliases] of Object.entries(TITLE_MAP)) {
+                        if (aliases.includes(nameWithout)) {
+                            found = ALL_78_TAROT_CARDS.find(c => c.type === 'major' && c.name === canonical);
+                            if (found) break;
+                        }
+                    }
+                }
+            }
+        }
 
         if (!found) {
             const suits = ['圣杯', '权杖', '宝剑', '星币'];
@@ -787,6 +869,9 @@
 
             // 首次
             setTimeout(() => { enhanceActionBars(); }, 300);
+
+            // 对方自动点赞
+            setupAutoReact();
         });
 
         waitForElement('#envelope-modal', () => {
